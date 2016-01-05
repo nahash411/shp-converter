@@ -1,0 +1,30 @@
+{
+  "name": "shp-converter",
+  "version": "1.0.0",
+  "description": "Convert binary shapefiles (and associated DBs, projections, etc) to geoJSON and topoJSON for D3",
+  "main": "server/server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "nodemon --ignore ./shapes/ server.js",
+    "start": "node server/server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nahash411/shp-converter.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/nahash411/shp-converter/issues"
+  },
+  "homepage": "https://github.com/nahash411/shp-converter",
+  "dependencies": {
+    "bluebird": "^3.0.5",
+    "connect-busboy": "0.0.2",
+    "express": "^4.13.3",
+    "fs-extra": "^0.26.2",
+    "shapefile": "^0.3.0",
+    "shp": "0.0.1",
+    "unzip": "^0.1.11"
+  }
+}

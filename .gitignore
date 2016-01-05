@@ -1,0 +1,5 @@
+node_modules
+server/shapes
+npm-debug.log
+sandbox.js
+client/scripts/sandbox.js

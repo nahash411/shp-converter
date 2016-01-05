@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>shp-converter</title>
+  <style>
+
+    #uploadForm {
+      margin: 25px 0 25px 0;
+    }
+
+    #city {
+      height: 25px;
+    }
+
+    .downloads {
+      float: right;
+    }
+
+    #state {
+      height: 25px;
+    }
+  
+    svg {
+      display: block;
+      margin: 0 auto 0 auto;
+    }
+
+    path {
+      fill: #ccc;
+      stroke: #000;
+      stroke-width: .5px;
+    }
+
+    path:hover {
+      fill: red;
+    }
+
+
+  </style>
+</head>
+<body>
+
+  <form id="uploadForm"
+        enctype="multipart/form-data"
+        action="/api/shapes"
+        method="post">
+    <span class="formLabel">Drag zip file here to convert to geoJSON -->  </span>
+    <input type="file" id="userInput" name="shapefile" />
+  </form>
+  <div id="state"></div> 
+  <div id="city"></div>
+  <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
+  <script src="scripts/jquery.form.js"></script>
+  <script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+  <script src="http://d3js.org/topojson.v1.min.js"></script>
+  <script>
+
+    $(document).ready(function() {
+
+      var states = {
+        2: 'ALASKA',
+        1: 'ALABAMA',
+        5: 'ARKANSAS',
+        60: 'AMERICAN SAMOA',
+        4: 'ARIZONA',
+        6: 'CALIFORNIA',
+        8: 'COLORADO',
+        9: 'CONNECTICUT',
+        11: 'DISTRICT OF COLUMBIA',
+        10: 'DELAWARE',
+        12: 'FLORIDA',
+        13: 'GEORGIA',
+        66: 'GUAM',
+        15: 'HAWAII',
+        19: 'IOWA',
+        16: 'IDAHO',
+        17: 'ILLINOIS',
+        18: 'INDIANA',
+        20: 'KANSAS',
+        21: 'KENTUCKY',
+        22: 'LOUISIANA',
+        25: 'MASSACHUSETTS',
+        24: 'MARYLAND',
+        23: 'MAINE',
+        26: 'MICHIGAN',
+        27: 'MINNESOTA',
+        29: 'MISSOURI',
+        28: 'MISSISSIPPI',
+        30: 'MONTANA',
+        37: 'NORTH CAROLINA',
+        38: 'NORTH DAKOTA',
+        31: 'NEBRASKA',
+        33: 'NEW HAMPSHIRE',
+        34: 'NEW JERSEY',
+        35: 'NEW MEXICO',
+        32: 'NEVADA',
+        36: 'NEW YORK',
+        39: 'OHIO',
+        40: 'OKLAHOMA',
+        41: 'OREGON',
+        42: 'PENNSYLVANIA',
+        72: 'PUERTO RICO',
+        44: 'RHODE ISLAND',
+        45: 'SOUTH CAROLINA',
+        46: 'SOUTH DAKOTA',
+        47: 'TENNESSEE',
+        48: 'TEXAS',
+        49: 'UTAH',
+        51: 'VIRGINIA',
+        78: 'VIRGIN ISLANDS',
+        50: 'VERMONT',
+        53: 'WASHINGTON',
+        55: 'WISCONSIN',
+        54: 'WEST VIRGINIA',
+        56: 'WYOMING'
+      };
+
+      status('Choose a file :)');
+      var shapefile = '';
+      var state;
+      var server = 'http://127.0.0.1:8000/';
+
+      setTimer();
+
+      $('#uploadForm').submit(function() {
+        status('uploading the file ...');
+
+        $(this).ajaxSubmit({
+          error: function(xhr) {
+            status('Error: ' + xhr.status);
+          },
+          success: function(response) {
+            createGeoJsonMap(shapefile);
+            // createTopoJsonMap(shapefile);
+            $('#userInput').val('');
+            addDownloadButtons();
+          }
+        });                                                                                                                 
+        return false;
+      });
+
+      function setTimer() {
+        var timerId;
+        timerId = setInterval(function() {
+          if($('#userInput').val() !== '') {
+            shapefile = $('#userInput').val().slice(12, -4);
+            // var tmp = shapefile.match(/_\d{1,2}_/);
+            // var num = tmp[0].match(/\d{1,2}/);
+            // var fips = Number(num[0]);
+            // $('#state').text(states[fips]);
+            clearInterval(timerId);
+            $('#uploadForm').submit();
+          }
+        }, 500);
+      }
+
+      var width = 800;
+      var height = 600;
+
+      var svg = d3.select("body").append("svg")
+          .attr("width", width)
+          .attr("height", height);
+
+      function createGeoJsonMap (filename) {
+        var filePath = server + filename + '.json';
+
+        d3.json(filePath, function(error, json) {
+          console.log(json);
+          var center = d3.geo.centroid(json);
+          var scale  = 150;
+          var offset = [width / 2, height / 2];
+          var projection = d3.geo.mercator()
+                .scale(scale)
+                .center(center)
+                .translate(offset);
+
+          var path = d3.geo.path().projection(projection);
+
+          var bounds = path.bounds(json);
+          var hscale = (scale * 1) * width / (bounds[1][0] - bounds[0][0]);
+          var vscale = (scale * 1) * height / (bounds[1][1] - bounds[0][1]);
+          var scale = (hscale < vscale) ? hscale : vscale;
+          var offset = [width - (bounds[0][0] + bounds[1][0]) / 2.15,
+                        height - (bounds[0][1] + bounds[1][1]) / 2];
+
+          projection = d3.geo.mercator()
+                .center(center)
+                .scale(scale)
+                .translate(offset);
+          path = path.projection(projection);
+          if (error) return console.error(error);
+          svg.selectAll("path")
+            .data(json.features)
+            .enter()
+              .append("path")
+              .attr("d", path)
+              .attr("data", function (d) {
+                return JSON.stringify(d.properties)
+              })
+              .on('click', countyClicked)
+        });
+      }
+
+      function createTopoJsonMap (filename) {
+        var filePath = server + filename + '.topo.json';
+
+        d3.json(filePath, function (err, json) {
+          console.log(json);
+          var center = d3.geo.centroid(json);
+          var scale  = 1000;
+          var offset = [width / 2, height / 2];
+          var projection = d3.geo.albersUsa()
+                .scale(scale)
+                // .center(center)
+                .translate(offset);
+
+          var path = d3.geo.path().projection(projection);
+
+          // var bounds = path.bounds(json);
+          // var hscale = (scale * 1) * width / (bounds[1][0] - bounds[0][0]);
+          // var vscale = (scale * 1) * height / (bounds[1][1] - bounds[0][1]);
+          // var scale = (hscale < vscale) ? hscale : vscale;
+          // var offset = [width - (bounds[0][0] + bounds[1][0]) / 2.15,
+          //               height - (bounds[0][1] + bounds[1][1]) / 2];
+
+          projection = d3.geo.mercator()
+                .center(center)
+                .scale(scale)
+                .translate(offset);
+          path = path.projection(projection);
+
+          svg.selectAll("path")
+            .data(json.objects.tl_2015_53_cousub)
+            .enter()
+              .append("path")
+              .attr("d", path)
+        })
+      }
+
+      function countyClicked(d) {
+        $('#city').text('City: ' + d.properties['NAME']);
+      }
+
+      function status(message) {
+        $('#status').text(message);
+      }
+
+      function addDownloadButtons () {
+        $('#uploadForm').append(
+          '<span class="downloads"> \
+            <div> \
+              <a href="' + server + shapefile + '.json" download>Download geoJSON</a> \
+              <a href="' + server + shapefile + '.topo.json" download>Download topoJSON</a> \
+            </div> \
+          </span>'
+        )
+      }
+
+    });
+  </script>
+</body>
+</html>
